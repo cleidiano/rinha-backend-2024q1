@@ -1,4 +1,4 @@
 ### Send POST request with json body
-GET http://localhost:8080/clientes/12/extrato
+GET http://localhost:9999/clientes/2/extrato
 Content-Type: application/json
 

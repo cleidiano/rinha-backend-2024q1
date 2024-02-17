@@ -2,4 +2,4 @@ datasource:
   db:
     username: rinha
     password: rinha
-    url: jdbc:postgresql://localhost:5432/rinha
+    url: ${DATASOURCE_DB_URL:jdbc:postgresql://localhost:5432/rinha}

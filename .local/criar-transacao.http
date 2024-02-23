@@ -1,9 +1,9 @@
 ### Send POST request with json body
-POST http://localhost:9999/clientes/2/transacoes
+POST http://localhost:9999/clientes/95/transacoes
 Content-Type: application/json
 
 {
-  "valor": 100,
-  "tipo" : "c",
-  "descricao" : "descricao"
+  "valor": 499999,
+  "tipo": "d",
+  "descricao": "descricao"
 }

@@ -23,7 +23,7 @@ class ClientAccountEntity(
     fun toAccountBalance() = AccountBalance(
         total = this.balance,
         statementDateTime = Instant.now(),
-        accountOverdraft = this.overdraftLimit
+        accountOverdraft = this.overdraftLimit * -1
     )
 
 }

@@ -30,7 +30,7 @@ class TransactionEntity(
 
     fun toTransaction() = Transaction(
         type = if (value > 0) 'c' else 'd',
-        value = this.value,
+        value = if (this.value < 0) this.value * -1 else this.value,
         createdAt = this.createAt,
         description = this.description
     )

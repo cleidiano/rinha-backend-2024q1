@@ -8,33 +8,26 @@ services:
     container_name: rinhaapi1
     environment:
       - DATASOURCE_DB_URL=jdbc:postgresql://postgres-db:5432/rinha
-      - JAVA_OPTS=-javaagent:/opt/app/otel-javaagent.jar -Dio.ktor.development=false
-      - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://otel-collector:4317
-      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://jaeger:4319
-      - OTEL_METRICS_EXPORTER=otlp
-      - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_LOGS_EXPORTER=none
-      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - DATASOURCE_MAX_CONNECTIONS=5
+      - JAVA_OPTS=-Dio.ktor.development=false -Xmx130m -Xms130m
     depends_on:
       postgres-db:
         condition: service_healthy
     ports:
-      - "8081:8080"
-    ulimits:
-      nofile:
-        soft: 1000000
-        hard: 1000000
+      - "8080:8080"
     deploy:
       resources:
         limits:
           cpus: '0.4'
-          memory: '145MB'
+          memory: '147MB'
+
   api2:
     <<: *api
     hostname: api2
     container_name: rinhaapi2
     ports:
-      - "8082:8080"
+      - "8081:8080"
+
   nginx:
     image: nginx:latest
     volumes:
@@ -48,12 +41,12 @@ services:
       resources:
         limits:
           cpus: "0.2"
-          memory: "10MB"
+          memory: "6MB"
 
   postgres-db:
     image: postgres:latest
     container_name: rinhadb
-    command: 'postgres -c max_connections=1000 -c shared_buffers=100MB -c synchronous_commit=off -c fsync=off -c full_page_writes=off'
+    command: 'postgres -c max_connections=12 -c shared_buffers=200MB -c synchronous_commit=off -c fsync=off -c full_page_writes=off'
     hostname: postgres
     environment:
       - POSTGRES_PASSWORD=rinha
@@ -71,18 +64,12 @@ services:
           cpus: '0.5'
           memory: '250MB'
     healthcheck:
-      test: ["CMD", "pg_isready", "--username", "rinha"]
+      test: [ "CMD", "pg_isready", "--username", "rinha" ]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 10s
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.54
-    ports:
-      - "16686:16686"
-      - "4317:4317"
-      - "4318:4318"
 networks:
   default:
     driver: bridge

@@ -13,13 +13,13 @@ object InstantSerializer : KSerializer<Instant> {
     override val descriptor: SerialDescriptor = serialDescriptor(typeOf<String>())
 
     override fun deserialize(decoder: Decoder): Instant {
-       return Instant.parse(decoder.decodeString())
+        return Instant.parse(decoder.decodeString())
     }
 
     override fun serialize(encoder: Encoder, value: Instant) {
-       encoder.encodeString(
-           DateTimeFormatter.ISO_INSTANT.format(value)
-       )
+        encoder.encodeString(
+            DateTimeFormatter.ISO_INSTANT.format(value)
+        )
     }
 
 }

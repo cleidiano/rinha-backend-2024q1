@@ -8,7 +8,6 @@ RUN unzip /tmp/app.zip -d /tmp/release
 FROM  amazoncorretto:21.0.2-alpine3.19
 
 COPY --from=builder /tmp/release /opt/app/
-COPY .local/otel-javaagent.jar /opt/app/otel-javaagent.jar
 
 WORKDIR /opt/app
 RUN rm -rf /var/cache/*

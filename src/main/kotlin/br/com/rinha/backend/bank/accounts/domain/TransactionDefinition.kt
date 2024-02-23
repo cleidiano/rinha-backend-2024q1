@@ -15,14 +15,19 @@ data class TransactionDefinition(
     @SerialName("descricao")
     val description: String
 ) {
-    fun validated(): TransactionDefinition {
-        check(value > 0) { "valor da transação inválido" }
-        check(type == 'c' || type == 'd') { "tipo de transação inválida" }
-        check(description.isNotBlank() && description.length <= 10) { "descrição inválida" }
+    fun normalized(): TransactionDefinition {
 
         if (this.type == 'c')
             return this
 
         return this.copy(value = value * -1)
     }
+
+    fun isValid(): Boolean {
+        if (value <= 0) return false
+        if (type != 'c' && type != 'd') return false
+
+        return description.isNotBlank() && description.length <= 10
+    }
+
 }

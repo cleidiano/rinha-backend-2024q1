@@ -6,10 +6,16 @@ import br.com.rinha.backend.bank.accounts.domain.TransactionDefinition
 import br.com.rinha.backend.bank.accounts.entities.TransactionEntity
 import br.com.rinha.backend.bank.accounts.entities.query.QClientAccountEntity
 import br.com.rinha.backend.bank.accounts.entities.query.QTransactionEntity
+import br.com.rinha.backend.bank.accounts.tx.CoroutineTransactionalOperator
 import io.ebean.DB
-import io.ebean.Transaction
-import io.ktor.server.plugins.*
-import kotlinx.coroutines.*
+import io.ebeaninternal.api.SpiEbeanServer
+import io.ktor.server.plugins.NotFoundException
+import io.opentelemetry.instrumentation.annotations.WithSpan
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 
 private val CLIENT_NOT_FOUND_CODE = -1 to null
 private val NOT_ENOUGH_ACCOUNT_BALANCE_CODE = -2 to null
@@ -22,8 +28,11 @@ sealed class TransactionResult {
 
 object Accounts {
 
+    private val txOperator = CoroutineTransactionalOperator(DB.getDefault() as SpiEbeanServer)
+
     suspend fun addTransaction(clientId: Int, transaction: TransactionDefinition): TransactionResult {
-        val balance = add(clientId, transaction.validated())
+
+        val balance = txOperator.execute { add(clientId, transaction.normalized()) }
 
         return when (balance.saldo to balance.limite) {
             CLIENT_NOT_FOUND_CODE -> TransactionResult.ClientNotFound
@@ -32,6 +41,7 @@ object Accounts {
         }
     }
 
+    @WithSpan
     private suspend fun add(idClient: Int, transaction: TransactionDefinition): SimpleAccountBalance {
         val query =
             DB.sqlQuery("select saldo, limite from criartransacao(?,?,?) as f(saldo integer, limite integer)").apply {
@@ -43,17 +53,18 @@ object Accounts {
         return withContext(Dispatchers.IO) {
             query.findOne()!!.run {
                 SimpleAccountBalance(
-                    limite = getInteger("limite"),
+                    limite = get("limite")?.run { this as Int * -1 },
                     saldo = getInteger("saldo")
                 )
             }
         }
     }
 
-    suspend fun getStatementFor(clientId: Int): AccountStatement = withContext(Dispatchers.IO) {
-        DB.beginTransaction().use { dbTransaction ->
-            val accountDeferred = dbTransaction.findClientAccountFor(this, clientId)
-            val lastTransactionsDeferred = dbTransaction.loadLastTransactionsFor(this, clientId)
+    @WithSpan
+    suspend fun getStatementFor(clientId: Int): AccountStatement = txOperator.execute {
+        withContext(Dispatchers.IO) {
+            val accountDeferred = findClientAccountFor(this, clientId)
+            val lastTransactionsDeferred = loadLastTransactionsFor(this, clientId)
 
             val account = accountDeferred.await() ?: throw NotFoundException()
 
@@ -64,12 +75,13 @@ object Accounts {
         }
     }
 
-    private fun Transaction.loadLastTransactionsFor(
+    @WithSpan
+    private fun loadLastTransactionsFor(
         scope: CoroutineScope,
         clientId: Int
     ): Deferred<List<TransactionEntity>> {
         return scope.async {
-            QTransactionEntity(this@loadLastTransactionsFor)
+            QTransactionEntity()
                 .clientId.eq(clientId)
                 .createAt.desc()
                 .setMaxRows(10)
@@ -77,6 +89,7 @@ object Accounts {
         }
     }
 
-    private fun Transaction.findClientAccountFor(scope: CoroutineScope, clientId: Int) =
-        scope.async { QClientAccountEntity(this@findClientAccountFor).id.eq(clientId).findOne() }
+    @WithSpan
+    private fun findClientAccountFor(scope: CoroutineScope, clientId: Int) =
+        scope.async { QClientAccountEntity().id.eq(clientId).findOne() }
 }

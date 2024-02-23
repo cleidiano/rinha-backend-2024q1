@@ -3,3 +3,4 @@ datasource:
     username: rinha
     password: rinha
     url: ${DATASOURCE_DB_URL:jdbc:postgresql://localhost:5432/rinha}
+    maxConnections: ${DATASOURCE_MAX_CONNECTIONS:10}
